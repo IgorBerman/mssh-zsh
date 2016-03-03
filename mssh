@@ -1,0 +1,32 @@
+#Usage: mssh <path-to-file-with-hosts>
+#Working within tmux pane(usually I'm creating new pane and then mssh hosts)
+if (test $# -ne 1);
+then
+    echo "Usage: mssh <path-to-file-with-hosts>"
+    exit;
+fi
+tmux rename-window ${1};
+active_window=`tmux list-windows | grep active | cut -d: -f1`;
+pane=`tmux list-panes -t ${active_window} | grep active | cut -d: -f1`;
+tmux select-layout tiled;
+tmux setw synchronize-panes on;
+echo "Current window.pane is ${active_window}.${pane}";
+
+machines="";
+first_machine="";
+while read connHost; do
+	echo "* Adding host '${connHost}'";
+	if (test -z "$first_machine")
+	then
+		first_machine="$connHost";
+	else
+		machines="$machines $connHost";
+	fi
+done < "${1}"
+
+for m in $machines
+do
+	tmux new-window -n "$m" "tmux join-pane -d -t ${active_window}.${pane} ; tmux select-layout -t ${active_window} tiled; ssh $m";	
+done;
+
+ssh $first_machine;
